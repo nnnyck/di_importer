@@ -1,37 +1,43 @@
 package main
 
 import (
+	"embed"
 	"fmt"
+	"html/template"
 	"os"
 	"os/exec"
 	"runtime"
 
 	"di_importer/routes"
 
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 )
 
-func main() {
+//go:embed web/views/*
+var content embed.FS
 
+func main() {
 	r := gin.Default()
+
+	htmlTemplates := template.Must(template.ParseFS(content, "web/views/*"))
+	r.SetHTMLTemplate(htmlTemplates)
+
+	r.StaticFS("/static", http.FS(content))
+
 	routes.SetupRoutes(r)
 
 	port := "8080"
 
-	r.Static("/static", "./web/static")
-	r.LoadHTMLGlob("web/views/*")
-
-	// Abre navegador automaticamente
 	openBrowser("http://localhost:" + port)
 
-	// Inicia servidor
 	if err := r.Run(":" + port); err != nil {
 		fmt.Println("Erro ao iniciar servidor:", err)
 		os.Exit(1)
 	}
 }
 
-// openBrowser tenta abrir a URL no navegador padrão
 func openBrowser(url string) {
 	var cmd string
 	var args []string
