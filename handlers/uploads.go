@@ -13,40 +13,31 @@ import (
 
 // HomeHandler exibe formulário simples
 func HomeHandler(c *gin.Context) {
-	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(`
-		<h1>DI Importer</h1>
-		<form action="/upload" method="post" enctype="multipart/form-data">
-			<label>Selecione PDFs:</label><br>
-			<input type="file" name="pdfs" multiple><br><br>
-			<label>Selecione a planilha:</label><br>
-			<input type="file" name="spreadsheet"><br><br>
-			<input type="submit" value="Enviar">
-		</form>
-	`))
+	c.HTML(200, "index.html", nil)
 }
 
 func UploadHandler(c *gin.Context) {
-	// Recebe a planilha
 	sheetFile, err := c.FormFile("spreadsheet")
 	if err != nil {
 		c.String(http.StatusBadRequest, "Erro ao receber a planilha")
 		return
 	}
 
-	// Abrir planilha com excelize
-	sheetPath := "./upload.xlsx"
-	if err := c.SaveUploadedFile(sheetFile, sheetPath); err != nil {
-		c.String(http.StatusInternalServerError, "Erro ao salvar a planilha")
-		return
-	}
-	xl, err := excelize.OpenFile(sheetPath)
+	file, err := sheetFile.Open()
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Erro ao abrir a planilha")
 		return
 	}
+	defer file.Close()
+
+	xl, err := excelize.OpenReader(file)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Erro ao abrir a planilha")
+		return
+	}
+
 	sheetName := xl.GetSheetName(0)
 
-	// Processa a planilha: cria slice de linhas com MAWB e/ou HAWB
 	sheet, err := sheetFile.Open()
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Erro ao abrir a planilha")
@@ -60,7 +51,6 @@ func UploadHandler(c *gin.Context) {
 		return
 	}
 
-	// Processa PDFs
 	form, err := c.MultipartForm()
 	if err != nil {
 		c.String(http.StatusBadRequest, "Erro ao processar o formulário")
@@ -78,18 +68,17 @@ func UploadHandler(c *gin.Context) {
 		dadosExtraidos = append(dadosExtraidos, dados...)
 	}
 
-	// Atualiza planilha
 	if err := services.UpdateExcelWithData(xl, sheetName, dadosExtraidos); err != nil {
 		c.String(http.StatusInternalServerError, "Erro ao atualizar a planilha")
 		return
 	}
 
-	// Salvar e devolver arquivo atualizado
-	outputPath := "./saida.xlsx"
-	if err := xl.SaveAs(outputPath); err != nil {
-		c.String(http.StatusInternalServerError, "Erro ao salvar a planilha final")
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", `attachment; filename="saida.xlsx"`)
+	c.Header("Content-Transfer-Encoding", "binary")
+
+	if err := xl.Write(c.Writer); err != nil {
+		c.String(http.StatusInternalServerError, "Erro ao gerar arquivo final")
 		return
 	}
-
-	c.File(outputPath)
 }

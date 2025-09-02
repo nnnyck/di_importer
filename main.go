@@ -12,10 +12,14 @@ import (
 )
 
 func main() {
+
 	r := gin.Default()
 	routes.SetupRoutes(r)
 
 	port := "8080"
+
+	r.Static("/static", "./web/static")
+	r.LoadHTMLGlob("web/views/*")
 
 	// Abre navegador automaticamente
 	openBrowser("http://localhost:" + port)
