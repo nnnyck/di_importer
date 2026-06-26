@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	pdfpkg "rsc.io/pdf"
+	pdfpkg "github.com/ledongthuc/pdf"
 
 	"di_importer/models"
 )
@@ -33,29 +33,27 @@ func ProcessPDFWithLines(pdf *multipart.FileHeader, linhas []models.DadosLinha) 
 	}
 	reader := bytes.NewReader(buf.Bytes())
 
-	// Cria o leitor de PDF com rsc.io/pdf
+	// Cria o leitor de PDF com ledongthuc/pdf
 	r, err := pdfpkg.NewReader(reader, int64(reader.Len()))
 	if err != nil {
 		return nil, err
 	}
 
-	// Extrai texto de todas as páginas
+	// Extrai texto de todas as páginas (resolve ToUnicode/Encoding das fontes)
 	var fullText strings.Builder
 	for i := 1; i <= r.NumPage(); i++ {
 		p := r.Page(i)
-		if p.V.IsNull() {
+		text, err := p.GetPlainText(nil)
+		if err != nil {
 			continue
 		}
-		content := p.Content()
-		for _, text := range content.Text {
-			fullText.WriteString(text.S)
-		}
+		fullText.WriteString(text)
 	}
 	texto := strings.Join(strings.Fields(fullText.String()), "") // normaliza
 
 	// Regex para capturar campos
 	reDataChegada := regexp.MustCompile(`Data\s*chegada\s*[-:>]*\s*(\d{2}/\d{2}/\d{4})`)
-	reVMLE := regexp.MustCompile(`VMLE:\s*[A-Z\s]+([\d,.]+)`)
+	reVMLE := regexp.MustCompile(`Valortotalnacondiçãodevenda:([\d.,]+)`)
 	reMAWB := regexp.MustCompile(`Ident\.\s*master\s*do\s*conhecimento\s*[-:>]*\s*(\d+)`)
 	reHAWB := regexp.MustCompile(`Identificaçãodoconhecimento:?(\d+)`)
 	reVolumes := regexp.MustCompile(`Quantidade:\s*(\d+)`)
