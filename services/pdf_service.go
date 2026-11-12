@@ -53,7 +53,7 @@ func ProcessPDFWithLines(pdf *multipart.FileHeader, linhas []models.DadosLinha) 
 
 	// Regex para capturar campos
 	reDataChegada := regexp.MustCompile(`Data\s*chegada\s*[-:>]*\s*(\d{2}/\d{2}/\d{4})`)
-	reVMLE := regexp.MustCompile(`Valortotalnacondiçãodevenda:([\d.,]+)`)
+	reVMLE := regexp.MustCompile(`ValorVMLE\s*(?:-&gt;|->|[-:>]+)\s*R\$\s*([\d.,]+)`)
 	reMAWB := regexp.MustCompile(`Ident\.\s*master\s*do\s*conhecimento\s*[-:>]*\s*(\d+)`)
 	reHAWB := regexp.MustCompile(`Identificaçãodoconhecimento:?(\d+)`)
 	reVolumes := regexp.MustCompile(`Quantidade:\s*(\d+)`)
